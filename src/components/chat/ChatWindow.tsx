@@ -21,6 +21,7 @@ interface ChatWindowProps {
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ receiverId, receiverName, onClose }) => {
   const { user } = useAuth();
+  console.log('[ChatWindow] Rendered with user:', user, 'receiverId:', receiverId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ receiverId, receiverName, onClo
 
       if (error) throw error;
       setMessages(data || []);
+      console.log('[ChatWindow] fetchMessages result:', data);
       scrollToBottom();
       markUnreadMessagesAsRead();
     } catch (error) {
@@ -110,13 +112,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ receiverId, receiverName, onClo
     }
   };
 
-  // Add console log for debugging send
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newMessage.trim()) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('messages')
         .insert([
           {
@@ -124,11 +125,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ receiverId, receiverName, onClo
             receiver_id: receiverId,
             content: newMessage.trim()
           }
-        ]);
+        ])
+        .select();
 
       if (error) throw error;
       setNewMessage('');
-      console.log('[ChatWindow] Message sent:', newMessage.trim());
+      console.log('[ChatWindow] Message sent:', newMessage.trim(), 'Insert result:', data);
     } catch (error) {
       console.error('Error sending message:', error);
     }
