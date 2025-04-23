@@ -38,34 +38,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ receiverId, receiverName, onClo
     };
   }, []);
 
-  const setupMessagesSubscription = () => {
-    const sub = supabase
-      .channel('messages')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages'
-      }, payload => {
-        const newMessage = payload.new as Message;
-        if (newMessage.sender_id === receiverId || newMessage.receiver_id === receiverId) {
-          setMessages(prev => [...prev, newMessage]);
-          scrollToBottom();
-          if (newMessage.receiver_id === user?.id) {
-            markMessageAsRead(newMessage.id);
-          }
-        }
-      })
-      .subscribe();
-
-    setSubscription(sub);
-  };
-
+  // Only fetch messages between current user and receiver (admin)
   const fetchMessages = async () => {
+    if (!user) return;
     try {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .or(`sender_id.eq.${receiverId},receiver_id.eq.${receiverId}`)
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -77,6 +57,31 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ receiverId, receiverName, onClo
     } finally {
       setLoading(false);
     }
+  };
+
+  // Only subscribe to new messages between current user and receiver (admin)
+  const setupMessagesSubscription = () => {
+    const sub = supabase
+      .channel('messages')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages'
+      }, payload => {
+        const newMessage = payload.new as Message;
+        // Only add message if it's between user and receiver
+        if ((newMessage.sender_id === user?.id && newMessage.receiver_id === receiverId) ||
+            (newMessage.sender_id === receiverId && newMessage.receiver_id === user?.id)) {
+          setMessages(prev => [...prev, newMessage]);
+          scrollToBottom();
+          if (newMessage.receiver_id === user?.id) {
+            markMessageAsRead(newMessage.id);
+          }
+        }
+      })
+      .subscribe();
+
+    setSubscription(sub);
   };
 
   const markUnreadMessagesAsRead = async () => {
@@ -105,6 +110,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ receiverId, receiverName, onClo
     }
   };
 
+  // Add console log for debugging send
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newMessage.trim()) return;
@@ -122,6 +128,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ receiverId, receiverName, onClo
 
       if (error) throw error;
       setNewMessage('');
+      console.log('[ChatWindow] Message sent:', newMessage.trim());
     } catch (error) {
       console.error('Error sending message:', error);
     }
