@@ -28,11 +28,11 @@ const ChatButton = () => {
         throw error;
       }
 
-      if (data) {
+      if (data && Array.isArray(data) && data.length > 0) {
         console.log('[ChatButton] Admin user info from RPC:', data);
-        setAdminUser({ id: data.admin_id, full_name: data.admin_name });
+        setAdminUser({ id: data[0].admin_id, full_name: data[0].admin_name });
       } else {
-        console.log('[ChatButton] No admin user found via RPC.');
+        console.log('[ChatButton] No admin user found via RPC. Data:', data);
         setAdminUser(null);
       }
     } catch (error) {
