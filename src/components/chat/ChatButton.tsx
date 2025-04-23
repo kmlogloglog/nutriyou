@@ -30,6 +30,7 @@ const ChatButton = () => {
 
       if (data && Array.isArray(data) && data.length > 0) {
         console.log('[ChatButton] Admin user info from RPC:', data);
+        // Use admin_id as the auth.users.id for the chat
         setAdminUser({ id: data[0].admin_id, full_name: data[0].admin_name });
       } else {
         console.log('[ChatButton] No admin user found via RPC. Data:', data);
